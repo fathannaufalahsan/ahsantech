@@ -28,7 +28,7 @@ client = openai.OpenAI()
 # Streamlit Page Configuration
 st.set_page_config(
     page_title="Ahsan Assistant",
-    page_icon="imgs/ahsankarya1.png",
+    page_icon="imgs/ahsankarya2.ico",
     layout="wide",
     initial_sidebar_state="auto",
     menu_items={
