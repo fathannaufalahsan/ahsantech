@@ -134,7 +134,7 @@ def initialize_conversation():
     conversation_history = [
         {"role": "system", "content": "You are Streamly, a specialized AI assistant trained in Streamlit."},
         {"role": "system", "content": "Streamly, is powered by the OpenAI GPT-4o-mini model, released on July 18, 2024."},
-        {"role": "system", "content": "You are trained up to Streamlit Version 1.36.0, release on June 20, 2024."},
+        {"role": "system", "content": "You are trained up to Streamlit Version 1.36.0, released on June 20, 2024."},
         {"role": "system", "content": "Refer to conversation history to provide context to your response."},
         {"role": "system", "content": "You were created by Madie Laine, an OpenAI Researcher."},
         {"role": "assistant", "content": assistant_message}
@@ -160,6 +160,7 @@ def get_latest_update_from_json(keyword, latest_updates):
                     return f"Section: {section}\nSub-Category: {sub_key}\n{key}: {value}"
     return "No updates found for the specified keyword."
 
+@st.cache_data(show_spinner=False)
 def construct_formatted_message(latest_updates):
     """
     Construct formatted message for the latest updates.
@@ -290,7 +291,7 @@ def main():
     st.sidebar.markdown("---")
 
     # Sidebar for Mode Selection
-    mode = st.sidebar.radio("Select Mode:", options=["Latest Updates", "Chat with Ahsan Assistant"], index=1)
+    mode = st.sidebar.radio("Select Mode:", options=["Latest Updates", "Chat with Ahsan Assistant", "Image Processing"], index=1)
 
     st.sidebar.markdown("---")
 
@@ -339,8 +340,18 @@ def main():
             with st.chat_message(role, avatar=avatar_image):
                 st.write(message["content"])
 
-    else:
+    elif mode == "Latest Updates":
         display_streamlit_updates()
+
+    elif mode == "Image Processing":
+        st.header("Upload and Process Image")
+        uploaded_image = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+        if uploaded_image:
+            image = Image.open(uploaded_image)
+            st.image(image, caption="Uploaded Image", use_column_width=True)
+            enhance = st.checkbox("Enhance Image Contrast")
+            processed_image = load_and_enhance_image(uploaded_image, enhance=enhance)
+            st.image(processed_image, caption="Processed Image", use_column_width=True)
 
 if __name__ == "__main__":
     main()
