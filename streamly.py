@@ -244,40 +244,12 @@ def initialize_session_state():
     if 'conversation_history' not in st.session_state:
         st.session_state.conversation_history = []
 
-
 def display_chat_interface():
     """Display the chat interface."""
-    st.header("Chat with Ahsan Assistant")
-
-    # Input for chat messages
     chat_input = st.chat_input("Ask me about Ahsan updates:")
-
-    # File uploader for images and other files
-    uploaded_file = st.file_uploader("Upload an image or file", type=["png", "jpg", "jpeg", "pdf", "docx"],
-                                     label_visibility="collapsed")
-
-    if chat_input or uploaded_file:
+    if chat_input:
         latest_updates = load_streamlit_updates()
-
-        # Handle chat submission
-        if chat_input:
-            on_chat_submit(chat_input, latest_updates)
-
-        # Handle file submission
-        if uploaded_file:
-            # Display the uploaded file in the chat
-            file_type = uploaded_file.type
-            if file_type.startswith("image/"):
-                # If the uploaded file is an image, display it
-                image = Image.open(uploaded_file)
-                st.image(image, caption="Uploaded Image", use_column_width=True)
-                st.session_state.history.append({"role": "user", "content": "Uploaded an image."})
-            else:
-                # For other file types, just display the file name
-                st.session_state.history.append({"role": "user", "content": f"Uploaded a file: {uploaded_file.name}"})
-
-        # Update the chat history with the uploaded file message
-        st.session_state.history.append({"role": "user", "content": chat_input if chat_input else "Uploaded a file."})
+        on_chat_submit(chat_input, latest_updates)
 
     # Display chat history
     for message in st.session_state.history[-NUMBER_OF_MESSAGES_TO_DISPLAY:]:
