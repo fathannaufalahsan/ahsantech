@@ -1,4 +1,3 @@
-import openai
 import streamlit as st
 import logging
 from PIL import Image, ImageEnhance
@@ -7,6 +6,7 @@ import json
 import requests
 import base64
 from openai import OpenAI, OpenAIError
+import io
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,8 +22,7 @@ if not OPENAI_API_KEY:
     st.stop()
 
 # Assign OpenAI API Key
-openai.api_key = OPENAI_API_KEY
-client = openai.OpenAI()
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # Streamlit Page Configuration
 st.set_page_config(
@@ -36,7 +35,7 @@ st.set_page_config(
         "Report a bug": "https://github.com/fathannaufalahsan",
         "About": """
             ## Streamly Streamlit Assistant
-            ### Powered using GPT-4o-mini
+            ### Powered using GPT-4
 
             **GitHub**: https://github.com/fathannaufalahsan/
 
@@ -133,8 +132,8 @@ def initialize_conversation():
 
     conversation_history = [
         {"role": "system", "content": "You are Streamly, a specialized AI assistant trained in Streamlit."},
-        {"role": "system", "content": "Streamly, is powered by the OpenAI GPT-4o-mini model, released on July 18, 2024."},
-        {"role": "system", "content": "You are trained up to Streamlit Version 1.36.0, released on June 20, 2024."},
+        {"role": "system", "content": "Streamly, is powered by the OpenAI GPT-4 model, released on March 14,2023."},
+        {"role": "system", "content": "You are trained up to Streamlit Version 1.36.0, released on June 20,2024."},
         {"role": "system", "content": "Refer to conversation history to provide context to your response."},
         {"role": "system", "content": "You were created by Madie Laine, an OpenAI Researcher."},
         {"role": "assistant", "content": assistant_message}
@@ -208,7 +207,7 @@ def on_chat_submit(chat_input, latest_updates):
     st.session_state.conversation_history.append({"role": "user", "content": user_input})
 
     try:
-        model_engine = "gpt-4o-mini"
+        model_engine = "gpt-4"
         assistant_reply = ""
 
         if "latest updates" in user_input:
@@ -232,8 +231,11 @@ def on_chat_submit(chat_input, latest_updates):
         st.session_state.history.append({"role": "assistant", "content": assistant_reply})
 
     except OpenAIError as e:
-        logging.error(f"Error occurred: {e}")
+        logging.error(f"OpenAI Error occurred: {e}")
         st.error(f"OpenAI Error: {str(e)}")
+    except Exception as e:
+        logging.error(f"General Error occurred: {e}")
+        st.error(f"An error occurred: {str(e)}")
 
 def initialize_session_state():
     """Initialize session state variables."""
@@ -241,6 +243,72 @@ def initialize_session_state():
         st.session_state.history = []
     if 'conversation_history' not in st.session_state:
         st.session_state.conversation_history = []
+
+
+def display_chat_interface():
+    """Display the chat interface."""
+    st.header("Chat with Ahsan Assistant")
+
+    # Input for chat messages
+    chat_input = st.chat_input("Ask me about Ahsan updates:")
+
+    # File uploader for images and other files
+    uploaded_file = st.file_uploader("Upload an image or file", type=["png", "jpg", "jpeg", "pdf", "docx"],
+                                     label_visibility="collapsed")
+
+    if chat_input or uploaded_file:
+        latest_updates = load_streamlit_updates()
+
+        # Handle chat submission
+        if chat_input:
+            on_chat_submit(chat_input, latest_updates)
+
+        # Handle file submission
+        if uploaded_file:
+            # Display the uploaded file in the chat
+            file_type = uploaded_file.type
+            if file_type.startswith("image/"):
+                # If the uploaded file is an image, display it
+                image = Image.open(uploaded_file)
+                st.image(image, caption="Uploaded Image", use_column_width=True)
+                st.session_state.history.append({"role": "user", "content": "Uploaded an image."})
+            else:
+                # For other file types, just display the file name
+                st.session_state.history.append({"role": "user", "content": f"Uploaded a file: {uploaded_file.name}"})
+
+        # Update the chat history with the uploaded file message
+        st.session_state.history.append({"role": "user", "content": chat_input if chat_input else "Uploaded a file."})
+
+    # Display chat history
+    for message in st.session_state.history[-NUMBER_OF_MESSAGES_TO_DISPLAY:]:
+        role = message["role"]
+        avatar_image = "imgs/avatar_ahsan.png" if role == "assistant" else "imgs/stuser.png" if role == "user" else None
+        with st.chat_message(role, avatar=avatar_image):
+            st.write(message["content"])
+
+def display_image_processing_interface():
+    """Display the image processing interface."""
+    st.header("Upload and Process Image")
+    uploaded_image = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
+    if uploaded_image:
+        image = Image.open(uploaded_image)
+        st.image(image, caption="Uploaded Image", use_column_width=True)
+        enhance = st.checkbox("Enhance Image Contrast")
+        processed_image = load_and_enhance_image(uploaded_image, enhance=enhance)
+        st.image(processed_image, caption="Processed Image", use_column_width=True)
+
+        # Convert processed image to byte stream
+        buffered = io.BytesIO()
+        processed_image.save(buffered, format="PNG")
+        img_bytes = buffered.getvalue()
+
+        # Create a download button
+        st.download_button(
+            label="Download Processed Image",
+            data=img_bytes,
+            file_name="processed_image.png",
+            mime="image/png"
+        )
 
 def main():
     """
@@ -328,30 +396,13 @@ def main():
         )
 
     if mode == "Chat with Ahsan Assistant":
-        chat_input = st.chat_input("Ask me about Ahsan updates:")
-        if chat_input:
-            latest_updates = load_streamlit_updates()
-            on_chat_submit(chat_input, latest_updates)
-
-        # Display chat history
-        for message in st.session_state.history[-NUMBER_OF_MESSAGES_TO_DISPLAY:]:
-            role = message["role"]
-            avatar_image = "imgs/avatar_ahsan.png" if role == "assistant" else "imgs/stuser.png" if role == "user" else None
-            with st.chat_message(role, avatar=avatar_image):
-                st.write(message["content"])
+        display_chat_interface()
 
     elif mode == "Latest Updates":
         display_streamlit_updates()
 
     elif mode == "Image Processing":
-        st.header("Upload and Process Image")
-        uploaded_image = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
-        if uploaded_image:
-            image = Image.open(uploaded_image)
-            st.image(image, caption="Uploaded Image", use_column_width=True)
-            enhance = st.checkbox("Enhance Image Contrast")
-            processed_image = load_and_enhance_image(uploaded_image, enhance=enhance)
-            st.image(processed_image, caption="Processed Image", use_column_width=True)
+        display_image_processing_interface()
 
 if __name__ == "__main__":
     main()
